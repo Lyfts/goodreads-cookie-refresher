@@ -1,0 +1,50 @@
+services:
+  selenium:
+    image: selenium/standalone-chrome:latest
+    shm_size: 2gb
+    ports:
+      # noVNC, rendered into a normal browser tab (no VNC client needed) --
+      # open this once for first-time login, and again any time the whole
+      # session dies and needs a human to log back in. LAN-only: don't
+      # forward this port past your router.
+      - "7900:7900"
+    environment:
+      # Password for the noVNC view above -- change this. If it's not
+      # respected, check `docker compose logs selenium` on startup; the var
+      # name has moved before across image versions.
+      - SE_VNC_PASSWORD=${VNC_PASSWORD:-changeme}
+      # These images kill an idle WebDriver session after 5 minutes by
+      # default. This session is meant to sit alive between refreshes, so
+      # this needs to comfortably exceed REFRESH_INTERVAL_SECONDS below.
+      - SE_NODE_SESSION_TIMEOUT=86400
+    volumes:
+      # Mounted over Downloads (an existing, correctly-owned directory in
+      # the image) rather than a fresh path -- Docker seeds a brand new
+      # named volume from whatever's already at that path in the image on
+      # first use, including ownership. A path with nothing there yet would
+      # come up root-owned, and Chrome (which this image runs as the
+      # unprivileged `seluser`) wouldn't be able to write its profile into
+      # it. See README.md.
+      - chrome-profile:/home/seluser/Downloads
+    restart: unless-stopped
+
+  refresher:
+    build: ./refresher
+    depends_on:
+      - selenium
+    environment:
+      - SELENIUM_URL=http://selenium:4444
+      - TARGET_URL=https://www.goodreads.com/
+      - PROFILE_DIR=/home/seluser/Downloads/profile
+      - REFRESH_INTERVAL_SECONDS=1200
+      - AUTH_TOKEN=${REFRESHER_AUTH_TOKEN:-}
+    ports:
+      # What the plugin's "Cookie Auto-Refresh URL" setting points at, e.g.
+      # http://<this-host>:${REFRESHER_PORT:-5080} (the plugin appends
+      # /refresh itself) -- change REFRESHER_PORT in .env if 5080 is
+      # already in use on this host.
+      - "${REFRESHER_PORT:-5080}:8080"
+    restart: unless-stopped
+
+volumes:
+  chrome-profile:
