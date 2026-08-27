@@ -29,6 +29,12 @@ services:
     restart: unless-stopped
 
   refresher:
+    # Published by .github/workflows/publish.yml on tagged releases. `build:`
+    # is also kept so contributors can build local changes with
+    # `docker compose build` -- just run `docker compose pull` instead of
+    # `up` first if you want the published image rather than triggering a
+    # local build.
+    image: ghcr.io/lyfts/goodreads-cookie-refresher:latest
     build: ./refresher
     depends_on:
       - selenium

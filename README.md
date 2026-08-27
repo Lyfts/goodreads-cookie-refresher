@@ -20,7 +20,7 @@ It's two containers:
 
 1. `cp .env.example .env` and set a real `VNC_PASSWORD`. Also set
    `REFRESHER_PORT` there if 5080 is already taken on this machine.
-2. `docker compose up -d`
+2. `docker compose pull && docker compose up -d` (pulls the published image instead of building locally; use `docker compose up -d --build` instead if you're working on the `refresher` source)
 3. Open `http://<this-machine's-LAN-IP>:7900` in a browser on any device on
    your network, enter the VNC password, and you'll see a live Chrome
    window already pointed at goodreads.com. Log in normally -- this is a
