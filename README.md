@@ -1,8 +1,7 @@
 # Goodreads Cookie Refresher
 
-Companion tool for ShelfSync (`storygraph.koplugin`), a KOReader plugin. Goodreads sits behind an AWS WAF bot-challenge that occasionally
-rejects the plugin's saved session cookie (see the WAF-challenge comments at
-the top of `shelfsync/lib/goodreads/api.lua` in the plugin repo). Normally
+Companion tool for [ShelfSync](https://github.com/Lyfts/ShelfSync), a KOReader plugin. Goodreads sits behind an AWS WAF bot-challenge that occasionally
+rejects the plugin's saved session cookie. Normally
 that just means repasting a fresh cookie by hand once in a while. This runs a
 real, logged-in Chrome session on your home network instead, and hands the
 plugin a fresh cookie automatically whenever it hits that wall.
