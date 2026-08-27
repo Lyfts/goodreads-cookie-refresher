@@ -73,7 +73,11 @@ def ensure_driver(force_new=False):
                 _driver.get(TARGET_URL)
                 log.info("session ready (attempt %d)", attempt)
                 return _driver
-            except WebDriverException as e:
+            except Exception as e:
+                # Broad on purpose: a not-yet-listening Selenium container
+                # surfaces as a raw urllib3.MaxRetryError (connection
+                # refused), not a WebDriverException, so narrowing this
+                # would let that case skip the retry loop entirely.
                 last_err = e
                 log.warning("selenium not ready yet (attempt %d): %s", attempt, e)
                 time.sleep(5)
@@ -153,7 +157,7 @@ def background_loop():
         try:
             ensure_driver()
             break
-        except RuntimeError:
+        except Exception:
             log.warning("initial driver startup still failing, retrying")
             time.sleep(5)
     while True:
