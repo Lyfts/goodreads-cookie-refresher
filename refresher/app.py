@@ -145,7 +145,17 @@ def health():
 
 
 def background_loop():
-    ensure_driver()
+    # Selenium can take well over a minute to come up on a first boot (cold
+    # image pull, Xvfb/Chrome startup), longer than ensure_driver()'s own
+    # 12-attempt/~60s budget -- so retry that budget itself indefinitely
+    # here rather than letting the whole thread die on a slow first start.
+    while True:
+        try:
+            ensure_driver()
+            break
+        except RuntimeError:
+            log.warning("initial driver startup still failing, retrying")
+            time.sleep(5)
     while True:
         try:
             do_refresh()
