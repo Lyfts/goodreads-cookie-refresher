@@ -37,7 +37,9 @@ log = logging.getLogger("refresher")
 app = Flask(__name__)
 
 _driver = None
-_driver_lock = threading.Lock()
+# Reentrant: do_refresh() holds this for its whole navigate/read critical
+# section and calls back into ensure_driver() while still holding it.
+_driver_lock = threading.RLock()
 _state = {"cookie": "", "cookie_count": 0, "updated_at": 0.0}
 
 
@@ -91,24 +93,30 @@ def _cookie_header_from(driver):
 
 
 def do_refresh():
-    driver = ensure_driver()
-    try:
-        driver.get(TARGET_URL)
-    except WebDriverException as e:
-        log.warning("navigation failed (%s), recreating session", e)
-        driver = ensure_driver(force_new=True)
-        driver.get(TARGET_URL)
+    # Held for the whole navigate/recreate/read-cookies sequence (not just
+    # the driver swap in ensure_driver()) so a concurrent caller -- the
+    # background loop and /refresh requests both land here -- can never
+    # quit() the driver out from under another thread mid-navigation or
+    # mid-get_cookies.
+    with _driver_lock:
+        driver = ensure_driver()
+        try:
+            driver.get(TARGET_URL)
+        except WebDriverException as e:
+            log.warning("navigation failed (%s), recreating session", e)
+            driver = ensure_driver(force_new=True)
+            driver.get(TARGET_URL)
 
-    cookie, count = _cookie_header_from(driver)
-    if cookie:
-        _state["cookie"] = cookie
-        _state["cookie_count"] = count
-        _state["updated_at"] = time.time()
-        log.info("refreshed cookie (%d cookies)", count)
-    else:
-        log.warning("refresh produced no cookies -- probably not logged in yet; "
-                     "log in via the Selenium container's noVNC view (port 7900)")
-    return cookie
+        cookie, count = _cookie_header_from(driver)
+        if cookie:
+            _state["cookie"] = cookie
+            _state["cookie_count"] = count
+            _state["updated_at"] = time.time()
+            log.info("refreshed cookie (%d cookies)", count)
+        else:
+            log.warning("refresh produced no cookies -- probably not logged in yet; "
+                         "log in via the Selenium container's noVNC view (port 7900)")
+        return cookie
 
 
 def _check_auth():
