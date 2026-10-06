@@ -4,10 +4,10 @@ services:
     shm_size: 2gb
     ports:
       # noVNC, rendered into a normal browser tab (no VNC client needed) --
-      # open this once for first-time login, and again any time the whole
-      # session dies and needs a human to log back in. LAN-only: don't
+      # open this for first-time login to each account, and again when an
+      # account session dies. LAN-only: don't
       # forward this port past your router.
-      - "7900:7900"
+      - "${VNC_PORT:-7900}:7900"
     environment:
       # Password for the noVNC view above -- change this. If it's not
       # respected, check `docker compose logs selenium` on startup; the var
@@ -17,6 +17,17 @@ services:
       # default. This session is meant to sit alive between refreshes, so
       # this needs to comfortably exceed REFRESH_INTERVAL_SECONDS below.
       - SE_NODE_SESSION_TIMEOUT=86400
+      # The startup wrapper below sets SE_NODE_MAX_SESSIONS from ACCOUNTS.
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+      - ACCOUNTS=${ACCOUNTS:-default}
+    # Each account owns one persistent WebDriver session. Derive Selenium's
+    # concurrency limit from the same account list so it cannot drift.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        IFS=, read -r -a accounts <<< "$${ACCOUNTS:-default}"
+        export SE_NODE_MAX_SESSIONS="$${#accounts[@]}"
+        exec /opt/bin/entry_point.sh
     volumes:
       # Mounted over Downloads (an existing, correctly-owned directory in
       # the image) rather than a fresh path -- Docker seeds a brand new
@@ -44,6 +55,7 @@ services:
       - PROFILE_DIR=/home/seluser/Downloads/profile
       - REFRESH_INTERVAL_SECONDS=1200
       - AUTH_TOKEN=${REFRESHER_AUTH_TOKEN:-}
+      - ACCOUNTS=${ACCOUNTS:-default}
     ports:
       # What the plugin's "Cookie Auto-Refresh URL" setting points at, e.g.
       # http://<this-host>:${REFRESHER_PORT:-5080} (the plugin appends
