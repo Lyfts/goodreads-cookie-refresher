@@ -77,6 +77,12 @@ desktop. Selenium's allowed concurrent session count is set automatically
 from `ACCOUNTS`.
 This shares one Selenium container/node, but each isolated account still
 needs its own Chrome process and uses additional browser memory.
+The Compose startup command removes Chromium's transient singleton and DevTools
+marker files from the persistent profile volume before Selenium starts. These
+files can point at an old container hostname or a socket under its removed
+`/tmp` directory after an unclean shutdown; clearing them preserves the saved
+browser profiles and lets Chrome start again. Mount this profile volume into
+only one Selenium container at a time.
 The account ID is a local label, not a Goodreads username. Chrome titles show
 it as `[ShelfSync: <id>]`, so you can identify the window even during the
 Amazon sign-in redirects.

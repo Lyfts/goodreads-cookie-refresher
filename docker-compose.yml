@@ -25,6 +25,12 @@ services:
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
+        # The profile volume survives container replacement, but Chromium's
+        # singleton files record the old container hostname and a /tmp socket.
+        # Remove only those transient files before Selenium opens the profiles.
+        find /home/seluser/Downloads -mindepth 2 -maxdepth 2 \
+          \( -name SingletonLock -o -name SingletonSocket -o -name SingletonCookie -o -name DevToolsActivePort \) \
+          -print -delete
         IFS=, read -r -a accounts <<< "$${ACCOUNTS:-default}"
         export SE_NODE_MAX_SESSIONS="$${#accounts[@]}"
         exec /opt/bin/entry_point.sh
